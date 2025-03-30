@@ -132,24 +132,29 @@ Playing multiple cards can create powerful combinations:
 - **Royal Flush**: +100 bonus effect
 
 ## Combat Rules
-1. **Attacking**:
+1. **Creatures**:
+   - Only Hearts and Spades cards can be used as creatures in combat
+   - Creatures have health equal to their face value
+   - Other cards (Diamonds and Clubs) cannot attack or block
+
+2. **Attacking**:
    - Untapped creatures can attack
    - Declare all attackers at once
    - Creatures become tapped when attacking
 
-2. **Blocking**:
+3. **Blocking**:
    - Opponent may block with untapped creatures
    - Each blocker can only block one attacker
    - Blockers don't become tapped when blocking
 
-3. **Damage**:
+4. **Damage**:
    - Creatures deal damage equal to their face value
    - Both creatures deal damage simultaneously
    - Excess damage is not carried over
 
 ## Mana System
-- Start with 0 mana
-- Gain 1 mana crystal per turn (up to 10)
+- Start with 2 mana and maximum mana of 2
+- Gain 1 mana crystal per turn (up to maximum of 10)
 - Mana refreshes at the start of each turn
 - Archetype-specific effects can modify mana
 
