@@ -17,8 +17,8 @@ class Player:
         self.archetype = archetype
         self.health = 20
         self.max_health = 20
-        self.mana = 0
-        self.max_mana = 0
+        self.mana = 2  # Start with 2 mana
+        self.max_mana = 2  # Start with max mana of 2
         self.hand: List[Card] = []
         self.deck: List[Card] = Card.create_standard_deck()
         self.discard: List[Card] = []

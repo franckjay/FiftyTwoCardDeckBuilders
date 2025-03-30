@@ -2,6 +2,7 @@ from typing import List, Optional
 from player import Player, Archetype
 from game_state import GameState, Phase
 from card import Card, Suit
+from card_lookup import format_hand_display, format_field_display
 
 def display_game_state(game_state: GameState) -> None:
     """Display the current game state."""
@@ -18,11 +19,11 @@ def display_game_state(game_state: GameState) -> None:
     print(f"Health: {opponent.health}/{opponent.max_health}")
     print(f"Field: {len(opponent.field)} cards")
     print("\nYour Field:")
-    for card in current_player.field:
-        print(f"  {card} (Tapped: {card.tapped})")
+    for card_display in format_field_display(current_player.field, current_player.archetype):
+        print(f"  {card_display}")
     print("\nYour Hand:")
-    for idx, card in enumerate(current_player.hand):
-        print(f"  [{idx}] {card} (Cost: {card.mana_cost})")
+    for card_display in format_hand_display(current_player.hand, current_player.archetype):
+        print(f"  {card_display}")
     print("=" * 50)
 
 def get_player_input(prompt: str) -> str:
@@ -72,36 +73,39 @@ def handle_combat_phase(game_state: GameState) -> None:
         if action == "2":
             break
         elif action == "1":
-            if not current_player.field:
-                print("No cards to attack with!")
+            # Only show creatures that can attack
+            attacking_creatures = [card for card in current_player.field if not card.tapped and card.is_creature]
+            if not attacking_creatures:
+                print("No creatures to attack with!")
                 break
                 
-            print("\nYour attacking cards:")
-            for idx, card in enumerate(current_player.field):
-                if not card.tapped:
-                    print(f"  [{idx}] {card}")
+            print("\nYour attacking creatures:")
+            for idx, card in enumerate(attacking_creatures):
+                print(f"  [{idx}] {format_card_display(card, current_player.archetype)}")
                     
             try:
                 attacker_idx = int(get_player_input("Enter attacker index (or -1 to cancel): "))
                 if attacker_idx == -1:
                     break
                     
-                if 0 <= attacker_idx < len(current_player.field):
-                    attacker = current_player.field[attacker_idx]
+                if 0 <= attacker_idx < len(attacking_creatures):
+                    attacker = attacking_creatures[attacker_idx]
                     if attacker.tapped:
                         print("Card is tapped!")
                         continue
                         
-                    print("\nOpponent's field:")
-                    for idx, card in enumerate(opponent.field):
-                        print(f"  [{idx}] {card}")
+                    # Only show creatures that can block
+                    blocking_creatures = [card for card in opponent.field if card.is_creature]
+                    print("\nOpponent's creatures:")
+                    for idx, card in enumerate(blocking_creatures):
+                        print(f"  [{idx}] {format_card_display(card, opponent.archetype)}")
                         
                     blocker_idx = get_player_input("Enter blocker index (or press Enter for direct attack): ")
                     if blocker_idx:
                         try:
                             blocker_idx = int(blocker_idx)
-                            if 0 <= blocker_idx < len(opponent.field):
-                                blocker = opponent.field[blocker_idx]
+                            if 0 <= blocker_idx < len(blocking_creatures):
+                                blocker = blocking_creatures[blocker_idx]
                                 game_state.resolve_combat(attacker, blocker)
                                 attacker.tapped = True
                         except ValueError:

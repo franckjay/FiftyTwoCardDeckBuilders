@@ -13,6 +13,8 @@ class Card:
         self.value = value
         self.tapped = False
         self.mana_cost = self._get_mana_cost()
+        self.health = self.face_value()  # Creatures have health equal to their face value
+        self.is_creature = suit in [Suit.SPADES, Suit.HEARTS]  # Only Spades and Hearts are creatures
         
     def _get_mana_cost(self) -> int:
         """Convert card value to mana cost."""
