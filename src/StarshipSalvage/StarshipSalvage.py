@@ -1,26 +1,12 @@
-import random
+from typing import Optional
 from game_logger import GameLogger
 from ai_agent import AIAgent
+from common.card import Card
+from src.common.player import Player
+from game_state import GameState
 
 # Global discard pile for cards discarded during tech search from the Derelict Cache.
 cache_discard = []
-
-
-class Card:
-    def __init__(self, suit, rank):
-        self.suit = suit  # "Clubs", "Diamonds", "Hearts", "Spades"
-        self.rank = rank  # "2"-"10", "J", "Q", "K", "A"
-
-    def face_value(self):
-        if self.rank.isdigit():
-            return int(self.rank)
-        else:
-            mapping = {"J": 5, "Q": 6, "K": 7, "A": 8}
-            return mapping.get(self.rank, 0)
-
-    def __str__(self):
-        suit_symbols = {"Clubs": "♣", "Diamonds": "♦", "Hearts": "♥", "Spades": "♠"}
-        return f"{self.rank}{suit_symbols.get(self.suit, self.suit)}"
 
 
 def create_standard_deck():
@@ -38,29 +24,6 @@ def create_starter_deck():
     return starter
 
 
-class Player:
-    def __init__(self, name):
-        self.name = name
-        self.deck = create_starter_deck()  # personal deck (starter deck)
-        self.discard_pile = []
-        self.hand = []
-        self.hull = 15
-        self.shield = 0  # shield points carried over from previous turn
-
-    def draw_cards(self, num):
-        for _ in range(num):
-            if not self.deck:
-                if self.discard_pile:
-                    print(f"{self.name} is reshuffling the discard pile into the deck.")
-                    self.deck = self.discard_pile
-                    self.discard_pile = []
-                    random.shuffle(self.deck)
-                else:
-                    print(f"{self.name} has no cards left to draw!")
-                    return
-            self.hand.append(self.deck.pop(0))
-
-
 def draw_from_cache(cache):
     if cache:
         return cache.pop(0)
@@ -76,7 +39,8 @@ def draw_from_cache(cache):
         return None
 
 
-def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, ai_agent=None):
+def player_turn(player: Player, opponent: Player, game_state: GameState, logger: GameLogger, 
+                turn_number: int, phase: str, ai_agent: Optional[AIAgent] = None) -> None:
     print("\n" + "=" * 40)
     print(f"{player.name}'s turn | Hull: {player.hull} | Shield: {player.shield}")
     
@@ -90,21 +54,21 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
         player2_hull=opponent.hull,
         player1_shield=player.shield,
         player2_shield=opponent.shield,
-        player1_hand_size=len(player.hand),
-        player2_hand_size=len(opponent.hand),
-        player1_deck_size=len(player.deck),
-        player2_deck_size=len(opponent.deck),
-        player1_discard_size=len(player.discard_pile),
-        player2_discard_size=len(opponent.discard_pile),
-        tech_bay_size=len([c for c in tech_bay if c is not None]),
-        derelict_cache_size=len(cache),
+        player1_hand_size=player.get_hand_size(),
+        player2_hand_size=opponent.get_hand_size(),
+        player1_deck_size=player.get_deck_size(),
+        player2_deck_size=opponent.get_deck_size(),
+        player1_discard_size=player.get_discard_size(),
+        player2_discard_size=opponent.get_discard_size(),
+        tech_bay_size=game_state.get_tech_bay_size(),
+        derelict_cache_size=game_state.get_derelict_cache_size(),
         phase=phase
     )
 
-    # At start of turn, shield resets (it only lasts until you face an opponent's attack)
+    # At start of turn, shield resets
     player.shield = 0
 
-    # Draw Phase: draw 5 cards.
+    # Draw Phase
     player.draw_cards(5)
     print(f"{player.name} draws 5 cards.")
     
@@ -118,14 +82,14 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
         player2_hull=opponent.hull,
         player1_shield=player.shield,
         player2_shield=opponent.shield,
-        player1_hand_size=len(player.hand),
-        player2_hand_size=len(opponent.hand),
-        player1_deck_size=len(player.deck),
-        player2_deck_size=len(opponent.deck),
-        player1_discard_size=len(player.discard_pile),
-        player2_discard_size=len(opponent.discard_pile),
-        tech_bay_size=len([c for c in tech_bay if c is not None]),
-        derelict_cache_size=len(cache),
+        player1_hand_size=player.get_hand_size(),
+        player2_hand_size=opponent.get_hand_size(),
+        player1_deck_size=player.get_deck_size(),
+        player2_deck_size=opponent.get_deck_size(),
+        player1_discard_size=player.get_discard_size(),
+        player2_discard_size=opponent.get_discard_size(),
+        tech_bay_size=game_state.get_tech_bay_size(),
+        derelict_cache_size=game_state.get_derelict_cache_size(),
         phase='action'
     )
 
@@ -133,7 +97,7 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
     spades_count = 0   # for Marine maneuvers (attack)
     hearts_count = 0   # for Medic maneuvers (repair)
 
-    # Action Phase: let player play cards one at a time.
+    # Action Phase
     while True:
         if not player.hand:
             print("No cards left in hand.")
@@ -160,7 +124,7 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
                         print("AI Scientist maneuver: Looking at top 3 cards of the Derelict Cache.")
                         search_cards = []
                         for _ in range(3):
-                            c = draw_from_cache(cache)
+                            c = game_state.draw_from_cache()
                             if c:
                                 search_cards.append(c)
                         if search_cards:
@@ -169,8 +133,7 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
                             player.hand.append(chosen)
                             print(f"AI added {chosen} to hand.")
                             if search_cards:
-                                global cache_discard
-                                cache_discard.extend(search_cards)
+                                game_state.add_to_cache_discard(search_cards)
                     elif card.suit == "Hearts":
                         hearts_count += 1
                         print("AI Medic maneuver: Scheduled hull repair.")
@@ -199,22 +162,18 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
             card = player.hand.pop(idx)
             mode = input(f"Play {card} as (R)esource or (M)aneuver? ").strip().lower()
             if mode.startswith("r"):
-                # Resource Mode: add salvage points equal to card's face value.
                 val = card.face_value()
                 salvage_points += val
                 print(f"Used {card} for resources (+{val} salvage).")
             elif mode.startswith("m"):
-                # Maneuver Mode: perform suit-specific action.
                 if card.suit == "Clubs":
-                    # Engineer: draw 1 card immediately.
                     print("Engineer maneuver: Drawing 1 card.")
                     player.draw_cards(1)
                 elif card.suit == "Diamonds":
-                    # Scientist: tech search (look at top 3 cards of Derelict Cache)
                     print("Scientist maneuver: Looking at top 3 cards of the Derelict Cache.")
                     search_cards = []
                     for _ in range(3):
-                        c = draw_from_cache(cache)
+                        c = game_state.draw_from_cache()
                         if c:
                             search_cards.append(c)
                     if not search_cards:
@@ -236,17 +195,13 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
                                 break
                             except ValueError:
                                 print("Invalid input.")
-                        # Discard the rest.
                         if search_cards:
                             print("Discarding the remaining cards from tech search.")
-                            global cache_discard
-                            cache_discard.extend(search_cards)
+                            game_state.add_to_cache_discard(search_cards)
                 elif card.suit == "Hearts":
-                    # Medic: schedule a hull repair.
                     hearts_count += 1
                     print("Medic maneuver: Scheduled hull repair.")
                 elif card.suit == "Spades":
-                    # Marine: schedule an attack.
                     spades_count += 1
                     print("Marine maneuver: Scheduled attack.")
                 else:
@@ -257,9 +212,9 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
 
     print(f"\nAction phase complete. Salvage Points: {salvage_points}")
 
-    # Purchase Phase: use salvage points to buy one tech card from the Tech Bay.
+    # Purchase Phase
     print("\n--- Tech Bay ---")
-    for idx, tech in enumerate(tech_bay):
+    for idx, tech in enumerate(game_state.tech_bay):
         if tech:
             cost = tech.face_value()
             print(f"  [{idx}] {tech} (Cost: {cost})")
@@ -268,17 +223,16 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
             
     if ai_agent and player.name == "AI":
         # Get AI's purchase decision
-        action = ai_agent.decide_purchase(logger.states[-1], tech_bay, salvage_points)
+        action = ai_agent.decide_purchase(logger.states[-1], game_state.tech_bay, salvage_points)
         if action.purchase and action.tech_bay_index is not None:
             try:
-                tech_card = tech_bay[action.tech_bay_index]
+                tech_card = game_state.tech_bay[action.tech_bay_index]
                 cost = tech_card.face_value()
                 if salvage_points >= cost:
                     salvage_points -= cost
-                    player.discard_pile.append(tech_card)
+                    player.add_to_discard(tech_card)
                     print(f"AI purchased {tech_card} for {cost} salvage points.")
-                    new_card = draw_from_cache(cache)
-                    tech_bay[action.tech_bay_index] = new_card
+                    game_state.refill_tech_bay_slot(action.tech_bay_index)
             except Exception as e:
                 print(f"Error executing AI purchase: {e}")
         else:
@@ -288,18 +242,16 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
         if purchase_choice != "none":
             try:
                 t_idx = int(purchase_choice)
-                if t_idx < 0 or t_idx >= len(tech_bay) or tech_bay[t_idx] is None:
+                if t_idx < 0 or t_idx >= len(game_state.tech_bay) or game_state.tech_bay[t_idx] is None:
                     print("Invalid selection; skipping purchase.")
                 else:
-                    tech_card = tech_bay[t_idx]
+                    tech_card = game_state.tech_bay[t_idx]
                     cost = tech_card.face_value()
                     if salvage_points >= cost:
                         salvage_points -= cost
-                        player.discard_pile.append(tech_card)
+                        player.add_to_discard(tech_card)
                         print(f"Purchased {tech_card} for {cost} salvage points. It goes to your discard pile.")
-                        # Refill the Tech Bay slot.
-                        new_card = draw_from_cache(cache)
-                        tech_bay[t_idx] = new_card
+                        game_state.refill_tech_bay_slot(t_idx)
                     else:
                         print("Not enough salvage points to purchase that card.")
             except ValueError:
@@ -307,46 +259,28 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
         else:
             print("No purchase made.")
 
-    # Any leftover salvage points are banked as a temporary shield (lasting until your next turn).
+    # Convert remaining salvage points to shield
     if salvage_points > 0:
         player.shield += salvage_points
         print(f"{salvage_points} salvage points converted into shield for your next turn.")
 
-    # Combat & End Phase:
-    # First, resolve attack. (Combo: first spade =1 damage, second =2, etc.)
-    attack_damage = (spades_count * (spades_count + 1)) // 2
+    # Combat Phase
+    attack_damage = game_state.calculate_attack_damage(spades_count)
     print(f"\n{player.name} launches an attack with combo damage = {attack_damage} (from {spades_count} Marine maneuver(s)).")
     if attack_damage > 0:
-        # Opponent's shield absorbs damage first.
-        if opponent.shield > 0:
-            if opponent.shield >= attack_damage:
-                opponent.shield -= attack_damage
-                print(f"{opponent.name}'s shield absorbed all the damage. (Remaining shield: {opponent.shield})")
-                attack_damage = 0
-            else:
-                print(f"{opponent.name}'s shield absorbed {opponent.shield} damage.")
-                attack_damage -= opponent.shield
-                opponent.shield = 0
-        opponent.hull -= attack_damage
-        print(f"{opponent.name}'s hull is now {opponent.hull}.")
+        game_state.apply_damage(player, opponent, attack_damage)
 
-    # Then, resolve repair from Medic maneuvers.
+    # Repair Phase
     if hearts_count > 0:
-        # One heart repairs 1; each additional heart repairs +1 extra.
-        if hearts_count == 1:
-            repair = 1
-        else:
-            repair = 1 + (hearts_count - 1) * 2
+        repair = game_state.calculate_repair_amount(hearts_count)
         player.hull += repair
         print(f"{player.name} repairs {repair} hull. New hull: {player.hull}")
 
-    # Finally, discard all remaining cards from hand.
-    if player.hand:
-        player.discard_pile.extend(player.hand)
-        player.hand.clear()
+    # End Phase
+    player.discard_hand()
     print(f"{player.name} discards any remaining cards. End of turn.\n")
 
-    # Log state before combat
+    # Log final state
     logger.log_state(
         turn_number=turn_number,
         current_player=player.name,
@@ -356,50 +290,31 @@ def player_turn(player, opponent, tech_bay, cache, logger, turn_number, phase, a
         player2_hull=opponent.hull,
         player1_shield=player.shield,
         player2_shield=opponent.shield,
-        player1_hand_size=len(player.hand),
-        player2_hand_size=len(opponent.hand),
-        player1_deck_size=len(player.deck),
-        player2_deck_size=len(opponent.deck),
-        player1_discard_size=len(player.discard_pile),
-        player2_discard_size=len(opponent.discard_pile),
-        tech_bay_size=len([c for c in tech_bay if c is not None]),
-        derelict_cache_size=len(cache),
-        phase='combat'
-    )
-
-    # Log state at end of turn
-    logger.log_state(
-        turn_number=turn_number,
-        current_player=player.name,
-        player1_name=player.name,
-        player2_name=opponent.name,
-        player1_hull=player.hull,
-        player2_hull=opponent.hull,
-        player1_shield=player.shield,
-        player2_shield=opponent.shield,
-        player1_hand_size=len(player.hand),
-        player2_hand_size=len(opponent.hand),
-        player1_deck_size=len(player.deck),
-        player2_deck_size=len(opponent.deck),
-        player1_discard_size=len(player.discard_pile),
-        player2_discard_size=len(opponent.discard_pile),
-        tech_bay_size=len([c for c in tech_bay if c is not None]),
-        derelict_cache_size=len(cache),
+        player1_hand_size=player.get_hand_size(),
+        player2_hand_size=opponent.get_hand_size(),
+        player1_deck_size=player.get_deck_size(),
+        player2_deck_size=opponent.get_deck_size(),
+        player1_discard_size=player.get_discard_size(),
+        player2_discard_size=opponent.get_discard_size(),
+        tech_bay_size=game_state.get_tech_bay_size(),
+        derelict_cache_size=game_state.get_derelict_cache_size(),
         phase='end'
     )
 
 
 def main():
     print("Welcome to Starship Salvage: Cosmic Run!")
-    # Get player names.
+    
+    # Get player names
     p1_name = input("Player 1, enter your name: ").strip() or "Player 1"
     p2_name = input("Player 2, enter your name: ").strip() or "Player 2"
     player1 = Player(p1_name)
     player2 = Player(p2_name)
 
-    # Initialize game logger
+    # Initialize game components
     logger = GameLogger()
-
+    game_state = GameState()
+    
     # Initialize AI agent if Player 2 is AI
     ai_agent = None
     if p2_name == "AI":
@@ -411,24 +326,22 @@ def main():
             print("Player 1 will play for both players.")
             return
 
-    # Set up the Derelict Cache (the common pool) and Tech Bay.
-    cache = create_standard_deck()  # standard 52-card deck
-    tech_bay = []
-    for _ in range(5):
-        tech_bay.append(draw_from_cache(cache))
-
+    # Main game loop
     turn_counter = 1
     while player1.hull > 0 and player2.hull > 0:
         print("\n" + "#" * 40)
         print(f"Turn {turn_counter}")
-        # Player 1's turn.
-        player_turn(player1, player2, tech_bay, cache, logger, turn_counter, 'start', ai_agent)
+        
+        # Player 1's turn
+        player_turn(player1, player2, game_state, logger, turn_counter, 'start', ai_agent)
         if player2.hull <= 0:
             break
-        # Player 2's turn.
-        player_turn(player2, player1, tech_bay, cache, logger, turn_counter, 'start', ai_agent)
+            
+        # Player 2's turn
+        player_turn(player2, player1, game_state, logger, turn_counter, 'start', ai_agent)
         if player1.hull <= 0:
             break
+            
         turn_counter += 1
 
     # Determine winner and log outcome

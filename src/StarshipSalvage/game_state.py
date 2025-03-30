@@ -1,6 +1,6 @@
 from typing import List, Optional
 from card import Card
-from player import Player
+from src.common.player import Player
 
 class GameState:
     def __init__(self):
