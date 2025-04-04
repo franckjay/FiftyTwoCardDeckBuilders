@@ -1,0 +1,16 @@
+I would like you to create a new game under `src/`. In it, I want you to design a python file called `rules.py`. In this file, have a string variable that is written in a markdown style with the rules you design for this markdown game:
+1. This game is a deckbuilder/wargaming hybrid. Its theme is a Fantasy bird game with 4 factions that correspond to the four suits of a poker deck.
+2. The suits correspond to a warrior class (raptors) clubs, a healer class (pigeons/doves) hearts, a spellcaster + ranged attacker class (smart owls + ravens) diamonds, and a gathering class (Quails, hummingbirds) spades.
+3. Each player (its a 2 player game) can pick an ace of a suit to be their champion representing that class, and then the other aces are discarded. 
+4. The game is played on a virtual grid of maybe  9x9? Could be dynamic. The players take turns placing the remaining 2s and 3s of the deck to be used as cover. 2s are lower cover, 3s are heavy cover that are obscuring. Perhaps 4s can be placed on the board as one time food deposits for characters to pick up?
+5. The players have the deck pool in the center that they draw from. Any cards not in play are put into the discard, which then can be reshuffled into play if the main deck is empty.
+6. Players take turns moving their characters per round (8 rounds total). Each activation, one player can move one character on the board.
+7. I am thinking face cards represent creatues that can be cast using some cost pool (Food). Players should be able to play a card each turn on average at a minimum. As part of their turn, they could sacrifice a healer/gatherer card on their bard to be used as food. Otherwise, gatherer type cards generate food per card on the board. 
+8. Each character each turning point gets to draw card(s), gain food (have a minimum value per turn, while their gatherers also generate food). Then the characters alternate activating cards on the board to move and attack (maybe 2 actions per card?)
+9. Some fun mechanisms : more powerful face cards are more expensive to cast, but have higher health and more fun spells
+10. Damage dealt by characters is random (dice rolling with modifiers) to keep things fresh
+11. Some spells for the healing/gathering classes (ravens can cast spells that damage, stun obscure, vultures can resurrect dead as necromancers, maybe quail can allow the player to draw an extra card, bonuses to hit for another player).
+12. Definitely have a max hand size for the player of something low (4) that needs to be discarded at the end of the turn. No hoarding of cards!
+13. Perhaps all remaining non-face cards (5-10) can be played as a food specific to playing cards of that suit (so a 5 and a 10 could be played in order to activate a Queen of the same suit that cost 2 food units to play)
+
+This should be a fully fledged game, with lots of character cards, each with its own power and spells
